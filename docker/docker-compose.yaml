@@ -1,0 +1,88 @@
+version: '3.7'
+
+services:
+  nginx-proxy:
+    image: jwilder/nginx-proxy
+    ports:
+      - 80:80
+    networks:
+      - reverse-proxy
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+
+  champions-nginx:
+    image: nginx:1.18-alpine
+    working_dir: /app
+    volumes:
+      - ../public:/app
+      - ../docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - champions-php-fpm
+    networks:
+      reverse-proxy:
+      champions-site:
+      main:
+        aliases:
+          - champions.local
+    environment:
+      - VIRTUAL_HOST=champions.local
+
+  champions-php-fpm:
+    dns:
+      - 8.8.8.8
+    build:
+      context: ../
+      dockerfile: docker/php/Dockerfile
+      args:
+        - UID=1000
+        - GID=1000
+    user: 1000:1000
+    volumes:
+      - ../:/app
+    restart: on-failure
+    working_dir: /app
+    env_file:
+      - .env
+    networks:
+      - champions-site
+      - mysql-network
+
+  champions-node:
+    image: node:15-alpine
+    user: 1000:1000
+    volumes:
+      - ../:/app
+    working_dir: /app
+    command: /bin/sh -c "yarn && yarn watch"
+    networks:
+      - champions-site
+
+  champions-mysql:
+    image: mysql:8
+    restart: on-failure
+    user: 1000:1000
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=champions
+      - MYSQL_USER=user
+      - MYSQL_PASSWORD=user
+    volumes:
+      - champions-mysql-data:/var/lib/mysql
+    ports:
+      - 3350:3306
+    networks:
+      - champions-site
+      - main
+
+volumes:
+  champions-mysql-data:
+    driver: local
+
+networks:
+  mysql-network:
+  champions-site:
+  reverse-proxy:
+    external: true
+  main:
+    external:
+      name: champions_default
