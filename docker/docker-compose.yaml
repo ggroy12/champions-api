@@ -11,7 +11,7 @@ services:
       - /var/run/docker.sock:/tmp/docker.sock:ro
 
   champions-nginx:
-    image: nginx:1.18-alpine
+    image: nginx:1.19-alpine
     working_dir: /app
     volumes:
       - ../public:/app
@@ -20,12 +20,12 @@ services:
       - champions-php-fpm
     networks:
       reverse-proxy:
-      champions-site:
+      champions-api:
       main:
         aliases:
-          - champions.local
+          - ${DOMAIN}
     environment:
-      - VIRTUAL_HOST=champions.local
+      - VIRTUAL_HOST=${DOMAIN}
 
   champions-php-fpm:
     dns:
@@ -34,9 +34,9 @@ services:
       context: ../
       dockerfile: docker/php/Dockerfile
       args:
-        - UID=1000
-        - GID=1000
-    user: 1000:1000
+        - UID=${UID}
+        - GID=${GID}
+    user: ${UID}:${GID}
     volumes:
       - ../:/app
     restart: on-failure
@@ -44,43 +44,31 @@ services:
     env_file:
       - .env
     networks:
-      - champions-site
-      - mysql-network
-
-  champions-node:
-    image: node:15-alpine
-    user: 1000:1000
-    volumes:
-      - ../:/app
-    working_dir: /app
-    command: /bin/sh -c "yarn && yarn watch"
-    networks:
-      - champions-site
+      - champions-api
 
   champions-mysql:
     image: mysql:8
     restart: on-failure
-    user: 1000:1000
+    user: ${UID}:${GID}
     environment:
-      - MYSQL_ROOT_PASSWORD=root
-      - MYSQL_DATABASE=champions
-      - MYSQL_USER=user
-      - MYSQL_PASSWORD=user
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${DB_DATABASE}
+      - MYSQL_USER=${DB_USER}
+      - MYSQL_PASSWORD=${DB_PASSWORD}
     volumes:
-      - champions-mysql-data:/var/lib/mysql
+      - champions-api-mysql-data:/var/lib/mysql
     ports:
-      - 3350:3306
+      - 3351:3306
     networks:
-      - champions-site
+      - champions-api
       - main
 
 volumes:
-  champions-mysql-data:
+  champions-api-mysql-data:
     driver: local
 
 networks:
-  mysql-network:
-  champions-site:
+  champions-api:
   reverse-proxy:
     external: true
   main:
