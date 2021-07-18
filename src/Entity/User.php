@@ -16,7 +16,7 @@ use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\SearchFilter;
  * @ORM\Entity(repositoryClass=UserRepository::class)
  * @ORM\Table(name="`user`")
  *
- * @ApiResource()
+ * @ApiResource(formats={"json"})
  * @ApiFilter(SearchFilter::class, properties={"email"})
  */
 class User implements UserInterface, PasswordAuthenticatedUserInterface
